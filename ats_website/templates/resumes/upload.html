@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Upload Resumes{% endblock %}
+{% block breadcrumb %}
+<a href="{{ url_for('jobs.list_jobs') }}">Jobs</a> /
+<a href="{{ url_for('jobs.job_detail', job_id=job.id) }}">{{ job.title }}</a> /
+<span>Upload</span>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Upload Resumes</h1>
+    <p class="page-subtitle">For: <strong>{{ job.title }}</strong></p>
+  </div>
+</div>
+
+<div class="upload-grid">
+  <!-- Upload Zone -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-cloud-upload-alt"></i> Select Resume Files</h3>
+      <span class="badge badge-neutral">Max 16MB per file</span>
+    </div>
+    <div class="card-body">
+      <form method="POST" enctype="multipart/form-data"
+            action="{{ url_for('resumes.upload', job_id=job.id) }}" id="uploadForm">
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-zone-content">
+            <div class="drop-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+            <h3>Drag & Drop Resumes Here</h3>
+            <p class="text-muted">or click to browse files</p>
+            <div class="accepted-formats">
+              <span><i class="fas fa-file-pdf"></i> PDF</span>
+              <span><i class="fas fa-file-word"></i> DOC/DOCX</span>
+              <span><i class="fas fa-file-alt"></i> TXT</span>
+            </div>
+          </div>
+          <input type="file" id="resumeFiles" name="resumes" multiple
+                 accept=".pdf,.doc,.docx,.txt" class="file-input" aria-label="Select resume files"/>
+        </div>
+
+        <!-- File List Preview -->
+        <div id="fileList" class="file-list" style="display:none">
+          <div class="file-list-header">
+            <span id="fileCount">0 files selected</span>
+            <button type="button" id="clearFiles" class="btn btn-ghost btn-sm">Clear All</button>
+          </div>
+          <div id="fileItems"></div>
+        </div>
+
+        <!-- Progress Bar (shown during upload) -->
+        <div id="uploadProgress" class="upload-progress" style="display:none">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <span id="progressText">Uploading & analyzing...</span>
+        </div>
+
+        <div class="form-actions mt-4">
+          <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="btn btn-ghost">
+            <i class="fas fa-arrow-left"></i> Cancel
+          </a>
+          <button type="submit" class="btn btn-primary btn-lg" id="uploadBtn" disabled>
+            <i class="fas fa-rocket"></i> Analyze Resumes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Tips & Job Info -->
+  <div class="upload-side">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-briefcase"></i> Job Requirements</h3></div>
+      <div class="detail-list">
+        <div class="detail-row"><span>Experience</span><strong>{{ job.experience_min }}–{{ job.experience_max }} years</strong></div>
+        <div class="detail-row"><span>Type</span><strong>{{ job.job_type }}</strong></div>
+        <div class="detail-row"><span>Candidates</span><strong>{{ job.candidate_count }} uploaded</strong></div>
+      </div>
+      {% if job.skills_list %}
+      <div class="card-body">
+        <p class="text-sm text-muted mb-2">Required Skills:</p>
+        <div class="skill-tags">
+          {% for skill in job.skills_list %}
+          <span class="skill-tag">{{ skill }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="card tips-card">
+      <div class="card-header"><h3><i class="fas fa-lightbulb"></i> How It Works</h3></div>
+      <div class="card-body">
+        <div class="tip-steps">
+          <div class="tip-step">
+            <div class="step-num">1</div>
+            <div><strong>Upload</strong><p>Drop multiple PDFs, DOCs or TXTs</p></div>
+          </div>
+          <div class="tip-step">
+            <div class="step-num">2</div>
+            <div><strong>Extract</strong><p>AI reads and parses each resume</p></div>
+          </div>
+          <div class="tip-step">
+            <div class="step-num">3</div>
+            <div><strong>Score</strong><p>Weighted ATS score is calculated</p></div>
+          </div>
+          <div class="tip-step">
+            <div class="step-num">4</div>
+            <div><strong>Rank</strong><p>Candidates ranked by match score</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_scripts %}
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('resumeFiles');
+const fileList = document.getElementById('fileList');
+const fileItems = document.getElementById('fileItems');
+const fileCount = document.getElementById('fileCount');
+const uploadBtn = document.getElementById('uploadBtn');
+const clearBtn = document.getElementById('clearFiles');
+const form = document.getElementById('uploadForm');
+
+let selectedFiles = [];
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+function iconForFile(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  if (ext === 'pdf') return 'fa-file-pdf';
+  if (ext === 'doc' || ext === 'docx') return 'fa-file-word';
+  return 'fa-file-alt';
+}
+
+function renderFiles() {
+  if (selectedFiles.length === 0) {
+    fileList.style.display = 'none';
+    uploadBtn.disabled = true;
+    return;
+  }
+  fileList.style.display = 'block';
+  uploadBtn.disabled = false;
+  fileCount.textContent = `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} selected`;
+  fileItems.innerHTML = selectedFiles.map((f, i) => `
+    <div class="file-item">
+      <i class="fas ${iconForFile(f.name)} file-icon"></i>
+      <div class="file-meta">
+        <span class="file-name">${f.name}</span>
+        <span class="file-size">${formatSize(f.size)}</span>
+      </div>
+      <button type="button" class="btn btn-ghost btn-xs remove-file" data-index="${i}" aria-label="Remove">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  `).join('');
+  document.querySelectorAll('.remove-file').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedFiles.splice(Number(btn.dataset.index), 1);
+      renderFiles();
+    });
+  });
+}
+
+function addFiles(newFiles) {
+  const existing = new Set(selectedFiles.map(f => f.name + f.size));
+  for (const f of newFiles) {
+    if (!existing.has(f.name + f.size)) selectedFiles.push(f);
+  }
+  renderFiles();
+}
+
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => addFiles(Array.from(fileInput.files)));
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragging'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragging'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragging');
+  addFiles(Array.from(e.dataTransfer.files));
+});
+clearBtn.addEventListener('click', () => { selectedFiles = []; renderFiles(); });
+
+form.addEventListener('submit', e => {
+  if (selectedFiles.length === 0) { e.preventDefault(); return; }
+  const dt = new DataTransfer();
+  selectedFiles.forEach(f => dt.items.add(f));
+  fileInput.files = dt.files;
+  document.getElementById('uploadProgress').style.display = 'block';
+  uploadBtn.disabled = true;
+  uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+});
+</script>
+{% endblock %}
+{% endblock %}

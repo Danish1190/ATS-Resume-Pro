@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard{% endblock %}
+{% block breadcrumb %}
+<a href="{{ url_for('jobs.list_jobs') }}">Jobs</a> /
+<a href="{{ url_for('jobs.job_detail', job_id=job.id) }}">{{ job.title }}</a> /
+<span>Leaderboard</span>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><i class="fas fa-trophy"></i> Candidate Leaderboard</h1>
+    <p class="page-subtitle">{{ job.title }} — Ranked by ATS Score</p>
+  </div>
+  <div class="header-actions">
+    <a href="{{ url_for('reports.export_pdf', job_id=job.id) }}" class="btn btn-ghost">
+      <i class="fas fa-file-pdf"></i> Export PDF
+    </a>
+    <a href="{{ url_for('reports.export_csv', job_id=job.id) }}" class="btn btn-ghost">
+      <i class="fas fa-file-csv"></i> Export CSV
+    </a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar card">
+  <form method="GET" class="filter-form">
+    <label>Min Score: <strong id="scoreVal">{{ min_score|int }}%</strong></label>
+    <input type="range" name="min_score" min="0" max="100" value="{{ min_score|int }}"
+           id="scoreRange" style="width:180px"/>
+    <div class="filter-tabs">
+      {% for s in ['all','pending','reviewed','shortlisted','rejected'] %}
+      <a href="?status={{ s }}&min_score={{ min_score }}"
+         class="filter-tab {% if status_filter == s %}active{% endif %}">{{ s.title() }}</a>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-ghost"><i class="fas fa-filter"></i> Apply</button>
+  </form>
+</div>
+
+<!-- Podium for top 3 -->
+{% if resumes|length >= 3 %}
+<div class="podium-section">
+  <!-- 2nd place -->
+  <div class="podium-place podium-2">
+    <div class="podium-avatar">{{ (resumes[1].candidate_name or 'U')[0].upper() }}</div>
+    <div class="podium-name">{{ resumes[1].candidate_name or 'Unknown' }}</div>
+    <div class="podium-score">{{ resumes[1].ats_score|round(1) }}%</div>
+    <div class="podium-bar p2"><span>2</span></div>
+  </div>
+  <!-- 1st place -->
+  <div class="podium-place podium-1">
+    <div class="podium-crown"><i class="fas fa-crown"></i></div>
+    <div class="podium-avatar podium-avatar-lg">{{ (resumes[0].candidate_name or 'U')[0].upper() }}</div>
+    <div class="podium-name">{{ resumes[0].candidate_name or 'Unknown' }}</div>
+    <div class="podium-score">{{ resumes[0].ats_score|round(1) }}%</div>
+    <div class="podium-bar p1"><span>1</span></div>
+  </div>
+  <!-- 3rd place -->
+  <div class="podium-place podium-3">
+    <div class="podium-avatar">{{ (resumes[2].candidate_name or 'U')[0].upper() }}</div>
+    <div class="podium-name">{{ resumes[2].candidate_name or 'Unknown' }}</div>
+    <div class="podium-score">{{ resumes[2].ats_score|round(1) }}%</div>
+    <div class="podium-bar p3"><span>3</span></div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Full Leaderboard -->
+<div class="card">
+  {% if resumes %}
+  <div class="table-wrapper">
+    <table class="data-table leaderboard-table">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Candidate</th>
+          <th>ATS Score</th>
+          <th>Skills %</th>
+          <th>Exp %</th>
+          <th>Education</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in resumes %}
+        <tr class="{% if loop.index == 1 %}row-gold{% elif loop.index == 2 %}row-silver{% elif loop.index == 3 %}row-bronze{% endif %}">
+          <td>
+            {% if loop.index == 1 %}<span class="rank-badge rank-gold"><i class="fas fa-trophy"></i> 1</span>
+            {% elif loop.index == 2 %}<span class="rank-badge rank-silver"><i class="fas fa-medal"></i> 2</span>
+            {% elif loop.index == 3 %}<span class="rank-badge rank-bronze"><i class="fas fa-award"></i> 3</span>
+            {% else %}<span class="rank-num">{{ loop.index }}</span>{% endif %}
+          </td>
+          <td>
+            <div class="candidate-cell">
+              <div class="candidate-avatar-sm">{{ (r.candidate_name or 'U')[0].upper() }}</div>
+              <div>
+                <strong>{{ r.candidate_name or 'Unknown' }}</strong>
+                <small class="text-muted">{{ r.years_experience|round(1) }} yrs exp</small>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="score-bar-cell">
+              <div class="score-bar-track">
+                <div class="score-bar-fill {% if r.ats_score >= 75 %}fill-green{% elif r.ats_score >= 50 %}fill-blue{% else %}fill-orange{% endif %}"
+                     style="width:{{ r.ats_score }}%"></div>
+              </div>
+              <strong class="{% if r.ats_score >= 75 %}text-green{% elif r.ats_score >= 50 %}text-blue{% else %}text-orange{% endif %}">
+                {{ r.ats_score|round(1) }}%
+              </strong>
+            </div>
+          </td>
+          <td>{{ r.skill_score|round(1) }}%</td>
+          <td>{{ r.experience_score|round(1) }}%</td>
+          <td>{{ r.education_level or '—' }}</td>
+          <td>
+            <span class="badge {% if r.status == 'shortlisted' %}badge-success{% elif r.status == 'rejected' %}badge-danger{% elif r.status == 'reviewed' %}badge-info{% else %}badge-warning{% endif %}">
+              {{ r.status.title() }}
+            </span>
+          </td>
+          <td>
+            <a href="{{ url_for('resumes.resume_detail', resume_id=r.id) }}" class="btn btn-ghost btn-xs">
+              <i class="fas fa-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fas fa-trophy"></i>
+    <p>No candidates match your current filters.</p>
+  </div>
+  {% endif %}
+</div>
+
+{% block extra_scripts %}
+<script>
+const scoreRange = document.getElementById('scoreRange');
+const scoreVal = document.getElementById('scoreVal');
+scoreRange?.addEventListener('input', () => scoreVal.textContent = scoreRange.value + '%');
+</script>
+{% endblock %}
+{% endblock %}

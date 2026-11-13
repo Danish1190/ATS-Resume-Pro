@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Compare Candidates{% endblock %}
+{% block breadcrumb %}
+<a href="{{ url_for('jobs.list_jobs') }}">Jobs</a> /
+<a href="{{ url_for('jobs.job_detail', job_id=job.id) }}">{{ job.title }}</a> /
+<span>Compare</span>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Candidate Comparison</h1>
+    <p class="page-subtitle">{{ job.title }} — {{ resumes|length }} candidates</p>
+  </div>
+  <a href="{{ url_for('analysis.leaderboard', job_id=job.id) }}" class="btn btn-primary">
+    <i class="fas fa-trophy"></i> Leaderboard
+  </a>
+</div>
+
+{% if resumes %}
+<div class="card">
+  <div class="card-header"><h3><i class="fas fa-chart-radar"></i> Score Comparison (Top 10)</h3></div>
+  <div class="chart-wrapper-lg">
+    <canvas id="compareChart" aria-label="Candidate Score Comparison Chart"></canvas>
+  </div>
+</div>
+
+<div class="compare-table-wrapper card mt-4">
+  <div class="card-header"><h3><i class="fas fa-table"></i> Side-by-Side Comparison</h3></div>
+  <div class="table-wrapper">
+    <table class="data-table compare-table">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Candidate</th>
+          <th>ATS Score</th>
+          <th>Skills</th>
+          <th>Experience</th>
+          <th>Education</th>
+          <th>Keywords</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in resumes %}
+        <tr>
+          <td><span class="rank-num">{{ loop.index }}</span></td>
+          <td>
+            <div class="candidate-cell">
+              <div class="candidate-avatar-sm">{{ (r.candidate_name or 'U')[0].upper() }}</div>
+              <div>
+                <strong>{{ r.candidate_name or 'Unknown' }}</strong>
+                <small class="text-muted">{{ r.candidate_email or '' }}</small>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="score-bar-cell">
+              <div class="score-bar-track">
+                <div class="score-bar-fill {% if r.ats_score >= 75 %}fill-green{% elif r.ats_score >= 50 %}fill-blue{% else %}fill-orange{% endif %}"
+                     style="width:{{ r.ats_score }}%"></div>
+              </div>
+              <strong>{{ r.ats_score|round(1) }}%</strong>
+            </div>
+          </td>
+          <td>{{ r.skill_score|round(1) }}%</td>
+          <td>{{ r.experience_score|round(1) }}%</td>
+          <td>{{ r.education_level or '—' }}</td>
+          <td>{{ r.keyword_score|round(1) }}%</td>
+          <td>
+            <span class="badge {% if r.status == 'shortlisted' %}badge-success{% elif r.status == 'rejected' %}badge-danger{% elif r.status == 'reviewed' %}badge-info{% else %}badge-warning{% endif %}">
+              {{ r.status.title() }}
+            </span>
+          </td>
+          <td>
+            <a href="{{ url_for('resumes.resume_detail', resume_id=r.id) }}" class="btn btn-ghost btn-xs">
+              <i class="fas fa-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="empty-state-full">
+  <div class="empty-icon"><i class="fas fa-users"></i></div>
+  <h3>No Candidates Yet</h3>
+  <p>Upload resumes to start comparing candidates.</p>
+  <a href="{{ url_for('resumes.upload', job_id=job.id) }}" class="btn btn-primary">
+    <i class="fas fa-upload"></i> Upload Resumes
+  </a>
+</div>
+{% endif %}
+
+{% block extra_scripts %}
+<script>
+{% if resumes %}
+const top10 = {{ resumes[:10] | map(attribute='candidate_name') | list | tojson }};
+const atsScores = {{ resumes[:10] | map(attribute='ats_score') | list | tojson }};
+const skillScores = {{ resumes[:10] | map(attribute='skill_score') | list | tojson }};
+const expScores = {{ resumes[:10] | map(attribute='experience_score') | list | tojson }};
+
+new Chart(document.getElementById('compareChart'), {
+  type: 'bar',
+  data: {
+    labels: top10,
+    datasets: [
+      { label: 'ATS Score', data: atsScores, backgroundColor: 'rgba(108,99,255,0.8)', borderRadius: 4 },
+      { label: 'Skill Score', data: skillScores, backgroundColor: 'rgba(0,212,170,0.8)', borderRadius: 4 },
+      { label: 'Experience', data: expScores, backgroundColor: 'rgba(255,179,71,0.8)', borderRadius: 4 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#94a3b8' } }
+    },
+    scales: {
+      y: { beginAtZero: true, max: 100, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      x: { ticks: { color: '#94a3b8', maxRotation: 30 }, grid: { display: false } }
+    }
+  }
+});
+{% endif %}
+</script>
+{% endblock %}
+{% endblock %}

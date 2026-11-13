@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}{{ resume.candidate_name or 'Resume' }} — Analysis{% endblock %}
+{% block breadcrumb %}
+<a href="{{ url_for('jobs.list_jobs') }}">Jobs</a> /
+<a href="{{ url_for('jobs.job_detail', job_id=job.id) }}">{{ job.title }}</a> /
+<span>{{ resume.candidate_name or 'Candidate' }}</span>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="candidate-header">
+    <div class="candidate-avatar-xl">{{ (resume.candidate_name or 'U')[0].upper() }}</div>
+    <div>
+      <h1 class="page-title">{{ resume.candidate_name or 'Unknown Candidate' }}</h1>
+      <p class="page-subtitle">
+        {% if resume.candidate_email %}<a href="mailto:{{ resume.candidate_email }}"><i class="fas fa-envelope"></i> {{ resume.candidate_email }}</a>{% endif %}
+        {% if resume.candidate_phone %} &nbsp;·&nbsp; <i class="fas fa-phone"></i> {{ resume.candidate_phone }}{% endif %}
+      </p>
+    </div>
+  </div>
+  <div class="header-actions">
+    <form method="POST" action="{{ url_for('resumes.update_status', resume_id=resume.id) }}" style="display:flex;gap:0.5rem;align-items:center">
+      <select name="status" class="select-sm">
+        {% for s in ['pending', 'reviewed', 'shortlisted', 'rejected'] %}
+        <option value="{{ s }}" {% if resume.status == s %}selected{% endif %}>{{ s.title() }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save"></i> Update</button>
+    </form>
+    <a href="{{ url_for('resumes.download_resume', resume_id=resume.id) }}" class="btn btn-ghost">
+      <i class="fas fa-download"></i> Download
+    </a>
+    <form method="POST" action="{{ url_for('resumes.reanalyze', resume_id=resume.id) }}" style="display:inline">
+      <button class="btn btn-ghost"><i class="fas fa-redo"></i> Re-analyze</button>
+    </form>
+    <form method="POST" action="{{ url_for('resumes.delete_resume', resume_id=resume.id) }}"
+          onsubmit="return confirm('Delete this resume?')" style="display:inline">
+      <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+    </form>
+  </div>
+</div>
+
+<!-- ATS Score Hero -->
+<div class="score-hero card">
+  <div class="score-donut-wrapper">
+    <canvas id="scoreDonut" width="180" height="180"></canvas>
+    <div class="score-center-text">
+      <span class="score-big">{{ resume.ats_score|round(1) }}%</span>
+      <span class="score-label-sm">ATS Score</span>
+    </div>
+  </div>
+  <div class="score-breakdown">
+    <h3>Score Breakdown</h3>
+    <div class="breakdown-bars">
+      {% set metrics = [
+        ('Skill Match', resume.skill_score, '#6C63FF'),
+        ('Keywords', resume.keyword_score, '#00D4AA'),
+        ('Experience', resume.experience_score, '#FFB347'),
+        ('Education', resume.education_score, '#FF6B6B'),
+      ] %}
+      {% for label, score, color in metrics %}
+      <div class="breakdown-row">
+        <span class="breakdown-label">{{ label }}</span>
+        <div class="breakdown-track">
+          <div class="breakdown-fill" style="width:{{ score }}%;background:{{ color }}"></div>
+        </div>
+        <span class="breakdown-pct" style="color:{{ color }}">{{ score|round(1) }}%</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="score-meta">
+      <span><i class="fas fa-user-graduate"></i> {{ resume.years_experience|round(1) }} yrs experience</span>
+      <span><i class="fas fa-graduation-cap"></i> {{ resume.education_level or 'N/A' }}</span>
+      <span class="badge {% if resume.status == 'shortlisted' %}badge-success{% elif resume.status == 'rejected' %}badge-danger{% elif resume.status == 'reviewed' %}badge-info{% else %}badge-warning{% endif %}">
+        {{ resume.status.title() }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="resume-detail-grid">
+  <!-- Skills -->
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-check-circle text-green"></i> Matched Skills ({{ matched_skills|length }})</h3></div>
+    <div class="card-body">
+      {% if matched_skills %}
+      <div class="skill-tags">
+        {% for s in matched_skills %}
+        <span class="skill-tag skill-tag-matched">✓ {{ s }}</span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted">No required skills matched.</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-times-circle text-red"></i> Missing Skills ({{ missing_skills|length }})</h3></div>
+    <div class="card-body">
+      {% if missing_skills %}
+      <div class="skill-tags">
+        {% for s in missing_skills %}
+        <span class="skill-tag skill-tag-missing">✗ {{ s }}</span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted text-green">All required skills present! 🎉</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-brain"></i> Detected Skills ({{ extracted_skills|length }})</h3></div>
+    <div class="card-body">
+      {% if extracted_skills %}
+      <div class="skill-tags">
+        {% for s in extracted_skills %}
+        <span class="skill-tag">{{ s }}</span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted">No skills auto-detected.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-sticky-note"></i> Recruiter Notes</h3></div>
+    <div class="card-body">
+      <textarea id="notesArea" rows="5" placeholder="Add notes about this candidate..."
+                class="notes-textarea">{{ resume.notes or '' }}</textarea>
+      <button id="saveNotes" class="btn btn-primary btn-sm mt-2">
+        <i class="fas fa-save"></i> Save Notes
+      </button>
+      <span id="notesSaved" class="text-muted small ml-2" style="display:none">✓ Saved</span>
+    </div>
+  </div>
+</div>
+
+<!-- Raw Resume Text -->
+{% if resume.raw_text %}
+<div class="card mt-4">
+  <div class="card-header">
+    <h3><i class="fas fa-file-alt"></i> Extracted Resume Text</h3>
+    <button class="btn btn-ghost btn-sm" id="toggleText">
+      <i class="fas fa-chevron-down"></i> Show/Hide
+    </button>
+  </div>
+  <div id="rawTextBlock" class="raw-text" style="display:none">
+    <pre>{{ resume.raw_text[:3000] }}{% if resume.raw_text|length > 3000 %}
+... [truncated for display]{% endif %}</pre>
+  </div>
+</div>
+{% endif %}
+
+{% block extra_scripts %}
+<script>
+// Score donut chart
+const score = {{ resume.ats_score }};
+const color = score >= 75 ? '#00D4AA' : score >= 50 ? '#6C63FF' : score >= 25 ? '#FFB347' : '#FF6B6B';
+new Chart(document.getElementById('scoreDonut'), {
+  type: 'doughnut',
+  data: {
+    datasets: [{
+      data: [score, 100 - score],
+      backgroundColor: [color, 'rgba(255,255,255,0.05)'],
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    cutout: '75%',
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    animation: { duration: 1200, easing: 'easeInOutQuart' }
+  }
+});
+
+// Notes save
+document.getElementById('saveNotes')?.addEventListener('click', async () => {
+  const resp = await fetch('{{ url_for("resumes.update_notes", resume_id=resume.id) }}', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'notes=' + encodeURIComponent(document.getElementById('notesArea').value)
+  });
+  if (resp.ok) {
+    const el = document.getElementById('notesSaved');
+    el.style.display = 'inline';
+    setTimeout(() => el.style.display = 'none', 2000);
+  }
+});
+
+// Toggle raw text
+document.getElementById('toggleText')?.addEventListener('click', () => {
+  const block = document.getElementById('rawTextBlock');
+  block.style.display = block.style.display === 'none' ? 'block' : 'none';
+});
+</script>
+{% endblock %}
+{% endblock %}

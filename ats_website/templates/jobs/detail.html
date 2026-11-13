@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}{{ job.title }}{% endblock %}
+{% block breadcrumb %}
+<a href="{{ url_for('jobs.list_jobs') }}">Jobs</a> / <span>{{ job.title }}</span>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ job.title }}</h1>
+    <p class="page-subtitle">
+      <span class="badge {% if job.status == 'active' %}badge-success{% elif job.status == 'closed' %}badge-danger{% else %}badge-warning{% endif %}">{{ job.status.title() }}</span>
+      &nbsp;{{ job.department or 'General' }} · {{ job.location or 'Remote' }} · {{ job.job_type }}
+      {% if job.deadline %} · Deadline: {{ job.deadline.strftime('%b %d, %Y') }}{% endif %}
+    </p>
+  </div>
+  <div class="header-actions">
+    <a href="{{ url_for('resumes.upload', job_id=job.id) }}" class="btn btn-primary">
+      <i class="fas fa-upload"></i> Upload Resumes
+    </a>
+    <a href="{{ url_for('analysis.compare', job_id=job.id) }}" class="btn btn-ghost">
+      <i class="fas fa-chart-bar"></i> Compare
+    </a>
+    <a href="{{ url_for('analysis.leaderboard', job_id=job.id) }}" class="btn btn-ghost">
+      <i class="fas fa-trophy"></i> Leaderboard
+    </a>
+    <div class="dropdown">
+      <button class="btn btn-ghost btn-icon" id="exportBtn"><i class="fas fa-download"></i> Export</button>
+      <div class="dropdown-menu" id="exportMenu">
+        <a href="{{ url_for('reports.export_pdf', job_id=job.id) }}">
+          <i class="fas fa-file-pdf"></i> Export PDF
+        </a>
+        <a href="{{ url_for('reports.export_csv', job_id=job.id) }}">
+          <i class="fas fa-file-csv"></i> Export CSV
+        </a>
+      </div>
+    </div>
+    <a href="{{ url_for('jobs.edit_job', job_id=job.id) }}" class="btn btn-ghost"><i class="fas fa-edit"></i></a>
+  </div>
+</div>
+
+<!-- Status Cards -->
+<div class="status-cards">
+  {% set statuses = [('pending','fa-clock','kpi-blue'), ('reviewed','fa-eye','kpi-purple'),
+                     ('shortlisted','fa-user-check','kpi-green'), ('rejected','fa-times-circle','kpi-orange')] %}
+  {% for s, icon, cls in statuses %}
+  <div class="status-mini-card {{ cls }}">
+    <i class="fas {{ icon }}"></i>
+    <span class="status-count">{{ status_counts[s] }}</span>
+    <span class="status-label">{{ s.title() }}</span>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="job-detail-grid">
+  <!-- Candidates Table -->
+  <div class="card candidates-card">
+    <div class="card-header">
+      <h3><i class="fas fa-users"></i> Candidates ({{ resumes|length }})</h3>
+      <div class="table-controls">
+        <input type="text" id="candidateSearch" placeholder="Search candidates..." class="table-search"/>
+        <select id="statusFilter" class="select-sm">
+          <option value="">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="reviewed">Reviewed</option>
+          <option value="shortlisted">Shortlisted</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+    </div>
+    {% if resumes %}
+    <div class="table-wrapper">
+      <table class="data-table" id="candidatesTable">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Candidate</th>
+            <th>ATS Score</th>
+            <th>Skills</th>
+            <th>Experience</th>
+            <th>Education</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for resume in resumes %}
+          <tr data-status="{{ resume.status }}" data-name="{{ resume.candidate_name|lower }}">
+            <td>
+              {% if loop.index == 1 %}<span class="rank-badge rank-gold"><i class="fas fa-trophy"></i> 1</span>
+              {% elif loop.index == 2 %}<span class="rank-badge rank-silver"><i class="fas fa-medal"></i> 2</span>
+              {% elif loop.index == 3 %}<span class="rank-badge rank-bronze"><i class="fas fa-award"></i> 3</span>
+              {% else %}<span class="rank-num">{{ loop.index }}</span>{% endif %}
+            </td>
+            <td>
+              <div class="candidate-cell">
+                <div class="candidate-avatar-sm">{{ (resume.candidate_name or 'U')[0].upper() }}</div>
+                <div>
+                  <strong>{{ resume.candidate_name or 'Unknown' }}</strong>
+                  <small class="text-muted">{{ resume.candidate_email or 'No email' }}</small>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="score-bar-cell">
+                <div class="score-bar-track">
+                  <div class="score-bar-fill {% if resume.ats_score >= 75 %}fill-green{% elif resume.ats_score >= 50 %}fill-blue{% elif resume.ats_score >= 25 %}fill-orange{% else %}fill-red{% endif %}"
+                       style="width: {{ resume.ats_score }}%"></div>
+                </div>
+                <span class="score-text">{{ resume.ats_score|round(1) }}%</span>
+              </div>
+            </td>
+            <td><span class="text-sm">{{ resume.skill_score|round(0)|int }}%</span></td>
+            <td><span class="text-sm">{{ resume.years_experience|round(1) }} yrs</span></td>
+            <td><span class="text-sm">{{ resume.education_level or '—' }}</span></td>
+            <td>
+              <span class="badge
+                {% if resume.status == 'shortlisted' %}badge-success
+                {% elif resume.status == 'rejected' %}badge-danger
+                {% elif resume.status == 'reviewed' %}badge-info
+                {% else %}badge-warning{% endif %}">
+                {{ resume.status.title() }}
+              </span>
+            </td>
+            <td>
+              <div class="action-btns">
+                <a href="{{ url_for('resumes.resume_detail', resume_id=resume.id) }}" class="btn btn-ghost btn-xs" title="View">
+                  <i class="fas fa-eye"></i>
+                </a>
+                <a href="{{ url_for('resumes.download_resume', resume_id=resume.id) }}" class="btn btn-ghost btn-xs" title="Download">
+                  <i class="fas fa-download"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-file-upload"></i>
+      <p>No resumes uploaded yet.</p>
+      <a href="{{ url_for('resumes.upload', job_id=job.id) }}" class="btn btn-primary">
+        <i class="fas fa-upload"></i> Upload Resumes
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Job Info Sidebar -->
+  <div class="job-info-sidebar">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-info-circle"></i> Job Details</h3></div>
+      <div class="detail-list">
+        <div class="detail-row"><span>Type</span><strong>{{ job.job_type }}</strong></div>
+        <div class="detail-row"><span>Location</span><strong>{{ job.location or 'N/A' }}</strong></div>
+        <div class="detail-row"><span>Experience</span><strong>{{ job.experience_min }}–{{ job.experience_max }} years</strong></div>
+        {% if job.salary_min and job.salary_max %}
+        <div class="detail-row"><span>Salary</span><strong>${{ "{:,}".format(job.salary_min) }}–${{ "{:,}".format(job.salary_max) }}</strong></div>
+        {% endif %}
+        <div class="detail-row"><span>Posted</span><strong>{{ job.created_at.strftime('%b %d, %Y') }}</strong></div>
+        {% if job.deadline %}
+        <div class="detail-row"><span>Deadline</span><strong>{{ job.deadline.strftime('%b %d, %Y') }}</strong></div>
+        {% endif %}
+      </div>
+    </div>
+    {% if job.skills_list %}
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-code"></i> Required Skills</h3></div>
+      <div class="card-body">
+        <div class="skill-tags">
+          {% for skill in job.skills_list %}
+          <span class="skill-tag">{{ skill }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-align-left"></i> Description</h3></div>
+      <div class="card-body text-sm">{{ job.description[:400] }}{% if job.description|length > 400 %}…{% endif %}</div>
+    </div>
+  </div>
+</div>
+
+{% block extra_scripts %}
+<script>
+// Search + filter candidates
+const searchInput = document.getElementById('candidateSearch');
+const statusFilter = document.getElementById('statusFilter');
+const rows = document.querySelectorAll('#candidatesTable tbody tr');
+
+function filterCandidates() {
+  const q = searchInput.value.toLowerCase();
+  const s = statusFilter.value;
+  rows.forEach(r => {
+    const matchName = !q || r.dataset.name.includes(q);
+    const matchStatus = !s || r.dataset.status === s;
+    r.style.display = (matchName && matchStatus) ? '' : 'none';
+  });
+}
+searchInput?.addEventListener('input', filterCandidates);
+statusFilter?.addEventListener('change', filterCandidates);
+
+// Export dropdown
+const exportBtn = document.getElementById('exportBtn');
+const exportMenu = document.getElementById('exportMenu');
+exportBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  exportMenu.classList.toggle('show');
+});
+document.addEventListener('click', () => exportMenu?.classList.remove('show'));
+</script>
+{% endblock %}
+{% endblock %}

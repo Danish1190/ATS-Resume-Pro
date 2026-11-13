@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}AI Analysis Hub{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard.index') }}">Dashboard</a> <span class="sep">/</span> <span>Analysis Hub</span>{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">AI Analysis Hub</h1>
+    <p class="page-subtitle">Deep NLP screening, candidate ranking leaderboards, and comparative insights</p>
+  </div>
+  <div class="header-actions">
+    <a href="{{ url_for('jobs.list_jobs') }}" class="btn btn-ghost">
+      <i class="fas fa-briefcase"></i> View Jobs
+    </a>
+  </div>
+</div>
+
+<!-- AI Screening Methodology Glass Card -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h3><i class="fas fa-brain"></i> ATS PRO Intelligent Scoring Engine</h3>
+  </div>
+  <div class="card-body">
+    <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 0;">
+      <div class="kpi-card kpi-purple" style="padding: 1.1rem;">
+        <div class="kpi-icon"><i class="fas fa-code"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Skills Taxonomy (40%)</span>
+          <span class="kpi-sub" style="color: var(--text-secondary);">Direct & synonymous skill matching</span>
+        </div>
+      </div>
+      <div class="kpi-card kpi-blue" style="padding: 1.1rem;">
+        <div class="kpi-icon"><i class="fas fa-briefcase"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Experience Depth (25%)</span>
+          <span class="kpi-sub" style="color: var(--text-secondary);">Years & seniority level assessment</span>
+        </div>
+      </div>
+      <div class="kpi-card kpi-green" style="padding: 1.1rem;">
+        <div class="kpi-icon"><i class="fas fa-graduation-cap"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Education (15%)</span>
+          <span class="kpi-sub" style="color: var(--text-secondary);">Degree level & field qualification</span>
+        </div>
+      </div>
+      <div class="kpi-card kpi-orange" style="padding: 1.1rem;">
+        <div class="kpi-icon"><i class="fas fa-search"></i></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Keyword Match (20%)</span>
+          <span class="kpi-sub" style="color: var(--text-secondary);">Job description contextual relevance</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Jobs Analysis Grid -->
+<div class="card mt-4">
+  <div class="card-header">
+    <h3><i class="fas fa-chart-line"></i> Position Analysis & Candidate Benchmarks</h3>
+  </div>
+  <div class="card-body">
+    {% if jobs %}
+    <div class="jobs-grid">
+      {% for job in jobs %}
+      <div class="job-card card" style="background: rgba(255,255,255,0.03);">
+        <div class="job-card-header">
+          <div class="job-card-title">
+            <div class="job-type-icon"><i class="fas fa-briefcase"></i></div>
+            <div>
+              <h3>{{ job.title }}</h3>
+              <span class="text-muted small">{{ job.department or 'General' }} · {{ job.location or 'Remote' }}</span>
+            </div>
+          </div>
+          <span class="badge {% if job.status == 'active' %}badge-success{% else %}badge-neutral{% endif %}">
+            {{ job.status.title() }}
+          </span>
+        </div>
+
+        <div class="job-card-meta" style="margin: 0.8rem 0;">
+          <span><i class="fas fa-users"></i> {{ job.candidate_count }} Candidates</span>
+          <span><i class="fas fa-user-check"></i> {{ job.shortlisted_count }} Shortlisted</span>
+        </div>
+
+        {% if job.skills_list %}
+        <div class="skill-tags" style="margin-bottom: 1.1rem;">
+          {% for skill in job.skills_list[:6] %}
+          <span class="skill-tag">{{ skill }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="job-card-actions" style="border-top: 1px solid var(--glass-border); padding-top: 0.9rem;">
+          <a href="{{ url_for('analysis.leaderboard', job_id=job.id) }}" class="btn btn-primary btn-sm">
+            <i class="fas fa-trophy"></i> Leaderboard
+          </a>
+          <a href="{{ url_for('analysis.compare', job_id=job.id) }}" class="btn btn-ghost btn-sm">
+            <i class="fas fa-columns"></i> Matrix Compare
+          </a>
+          <a href="{{ url_for('reports.export_pdf', job_id=job.id) }}" class="btn btn-ghost btn-sm" title="Download PDF Report">
+            <i class="fas fa-file-pdf"></i> PDF
+          </a>
+          <a href="{{ url_for('reports.export_csv', job_id=job.id) }}" class="btn btn-ghost btn-sm" title="Export CSV">
+            <i class="fas fa-file-csv"></i> CSV
+          </a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-briefcase"></i>
+      <p>No active jobs to analyze. <a href="{{ url_for('jobs.create_job') }}">Create a job position</a></p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block auth_content %}
+<div class="auth-container">
+  <div class="auth-left">
+    <div class="auth-brand">
+      <div class="auth-logo">
+        <i class="fas fa-robot"></i>
+      </div>
+      <h1>ATS PRO</h1>
+      <p>Intelligent Resume Screening & Candidate Management</p>
+    </div>
+    <div class="auth-features">
+      <div class="auth-feat">
+        <div class="feat-icon"><i class="fas fa-brain"></i></div>
+        <div><strong>AI-Powered Analysis</strong><p>Score resumes automatically with smart NLP</p></div>
+      </div>
+      <div class="auth-feat">
+        <div class="feat-icon"><i class="fas fa-chart-line"></i></div>
+        <div><strong>Real-Time Dashboard</strong><p>Track candidates with live analytics</p></div>
+      </div>
+      <div class="auth-feat">
+        <div class="feat-icon"><i class="fas fa-file-export"></i></div>
+        <div><strong>PDF & CSV Reports</strong><p>Export professional reports instantly</p></div>
+      </div>
+    </div>
+    <div class="auth-stats">
+      <div class="auth-stat"><span>50K+</span><small>Resumes Analyzed</small></div>
+      <div class="auth-stat"><span>5K+</span><small>Jobs Posted</small></div>
+      <div class="auth-stat"><span>98%</span><small>Accuracy Rate</small></div>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-card-header">
+        <h2>Welcome Back 👋</h2>
+        <p>Sign in to your ATS PRO account</p>
+      </div>
+      <!-- Demo Credentials Quick Access Glass Pill -->
+      <div class="demo-creds-glass">
+        <div class="demo-creds-header">
+          <i class="fas fa-key"></i>
+          <span>Demo Credentials (1-Click Fill)</span>
+        </div>
+        <div class="demo-creds-btns">
+          <button type="button" class="demo-fill-btn" onclick="fillCreds('admin@atspro.com', 'Admin@1234')">
+            <span class="role-tag">Admin</span>
+            <span class="role-email">admin@atspro.com</span>
+            <i class="fas fa-arrow-right"></i>
+          </button>
+          <button type="button" class="demo-fill-btn" onclick="fillCreds('recruiter@atspro.com', 'Recruiter@1234')">
+            <span class="role-tag role-tag-alt">Recruiter</span>
+            <span class="role-email">recruiter@atspro.com</span>
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <form method="POST" action="{{ url_for('auth.login') }}" class="auth-form" id="loginForm" novalidate>
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <div class="input-wrapper">
+            <i class="fas fa-envelope"></i>
+            <input type="email" id="email" name="email" placeholder="you@company.com"
+                   autocomplete="email" required/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="input-wrapper">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="password" name="password" placeholder="••••••••"
+                   autocomplete="current-password" required/>
+            <button type="button" class="pwd-toggle" aria-label="Toggle password visibility">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="form-row-between">
+          <label class="checkbox-label">
+            <input type="checkbox" name="remember" id="remember"/>
+            <span>Remember me</span>
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full btn-lg">
+          <i class="fas fa-sign-in-alt"></i> Sign In
+        </button>
+      </form>
+      <div class="auth-divider"><span>New to ATS PRO?</span></div>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-outline btn-full">
+        <i class="fas fa-user-plus"></i> Create an Account
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+function fillCreds(email, password) {
+  const emailInput = document.getElementById('email');
+  const passInput = document.getElementById('password');
+  if (emailInput && passInput) {
+    emailInput.value = email;
+    passInput.value = password;
+    const form = document.getElementById('loginForm');
+    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="ATS PRO — Smart Applicant Tracking System to screen, rank and manage resumes with AI-powered analysis."/>
+  <title>{% block title %}ATS PRO{% endblock %} | ATS PRO</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.jpg') }}" type="image/jpeg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    // Global Chart.js glassmorphism defaults
+    document.addEventListener('DOMContentLoaded', () => {
+      Chart.defaults.color = '#A8B2D8';
+      Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+      Chart.defaults.font.family = 'Inter, system-ui, sans-serif';
+      Chart.defaults.plugins.legend.labels.usePointStyle = true;
+      Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(10,8,32,0.95)';
+      Chart.defaults.plugins.tooltip.borderColor = 'rgba(124,110,255,0.35)';
+      Chart.defaults.plugins.tooltip.borderWidth = 1;
+      Chart.defaults.plugins.tooltip.padding = 12;
+      Chart.defaults.plugins.tooltip.cornerRadius = 10;
+    });
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<!-- ─── SIDEBAR ─────────────────────────────────────────────────────── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <div class="logo-icon"><i class="fas fa-robot"></i></div>
+      <div class="logo-text">
+        <span class="logo-name">ATS PRO</span>
+        <span class="logo-tagline">Smart Hiring</span>
+      </div>
+    </div>
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+      <i class="fas fa-bars"></i>
+    </button>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <span class="nav-label">MAIN</span>
+      <a href="{{ url_for('dashboard.index') }}" class="nav-item {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+        <i class="fas fa-chart-pie"></i><span>Dashboard</span>
+      </a>
+      <a href="{{ url_for('jobs.list_jobs') }}" class="nav-item {% if 'jobs' in request.endpoint %}active{% endif %}">
+        <i class="fas fa-briefcase"></i><span>Jobs</span>
+        <span class="nav-badge" id="sidebarJobCount"></span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <span class="nav-label">ANALYSIS</span>
+      <a href="{{ url_for('resumes.list_resumes') }}" class="nav-item {% if 'resumes' in request.endpoint %}active{% endif %}">
+        <i class="fas fa-users"></i><span>Candidates</span>
+      </a>
+      <a href="{{ url_for('analysis.index') }}" class="nav-item {% if 'analysis' in request.endpoint %}active{% endif %}">
+        <i class="fas fa-brain"></i><span>Analysis Hub</span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <span class="nav-label">ACCOUNT</span>
+      <a href="{{ url_for('auth.profile') }}" class="nav-item {% if request.endpoint == 'auth.profile' %}active{% endif %}">
+        <i class="fas fa-user-circle"></i><span>Profile</span>
+      </a>
+      <a href="{{ url_for('auth.logout') }}" class="nav-item logout-item">
+        <i class="fas fa-sign-out-alt"></i><span>Logout</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-avatar">{{ current_user.name[0].upper() }}</div>
+      <div class="user-details">
+        <span class="user-name">{{ current_user.name }}</span>
+        <span class="user-role">{{ current_user.company or 'Recruiter' }}</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ─── MAIN LAYOUT ────────────────────────────────────────────────── -->
+<div class="main-layout" id="mainLayout">
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu">
+        <i class="fas fa-bars"></i>
+      </button>
+      <div class="breadcrumb">{% block breadcrumb %}{% endblock %}</div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-search">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="Search jobs, candidates..." id="globalSearch"/>
+      </div>
+      <a href="{{ url_for('jobs.create_job') }}" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus"></i> New Job
+      </a>
+      <div class="notif-bell" title="Notifications">
+        <i class="fas fa-bell"></i>
+        <span class="notif-dot"></span>
+      </div>
+      <div class="user-menu" id="userMenuBtn">
+        <div class="user-avatar-sm">{{ current_user.name[0].upper() }}</div>
+        <i class="fas fa-chevron-down"></i>
+        <div class="user-dropdown" id="userDropdown">
+          <a href="{{ url_for('auth.profile') }}"><i class="fas fa-user"></i> Profile</a>
+          <hr/>
+          <a href="{{ url_for('auth.logout') }}" class="text-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Flash Messages -->
+  <div class="flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}" role="alert">
+          <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'danger' %}fa-exclamation-circle{% elif category == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
+          {{ message }}
+          <button class="alert-close" onclick="this.parentElement.remove()" aria-label="Close">&times;</button>
+        </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <main class="page-content">
+    {% block content %}
+    {% block app_content %}{% endblock %}
+    {% endblock %}
+  </main>
+</div>
+
+<!-- Overlay for mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+{% else %}
+<!-- ─── AUTH LAYOUT ────────────────────────────────────────────────── -->
+<div class="auth-layout">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container auth-flash">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}" role="alert">
+        <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'danger' %}fa-exclamation-circle{% elif category == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
+        {{ message }}
+        <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+  {% block auth_content %}{% endblock %}
+</div>
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

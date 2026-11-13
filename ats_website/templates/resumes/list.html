@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}All Candidates{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('dashboard.index') }}">Dashboard</a> <span class="sep">/</span> <span>Candidates</span>{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Candidate Pool</h1>
+    <p class="page-subtitle">Screen, compare, and manage candidates across all positions</p>
+  </div>
+  <div class="header-actions">
+    <a href="{{ url_for('jobs.list_jobs') }}" class="btn btn-ghost">
+      <i class="fas fa-briefcase"></i> View Jobs
+    </a>
+  </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="filter-bar card">
+  <form method="GET" class="filter-form">
+    <div class="input-wrapper filter-search">
+      <i class="fas fa-search"></i>
+      <input type="text" name="search" placeholder="Search candidate name, email, skill..." value="{{ search }}"/>
+    </div>
+    
+    <div class="input-wrapper filter-select-wrapper">
+      <i class="fas fa-briefcase"></i>
+      <select name="job_id" onchange="this.form.submit()">
+        <option value="all">All Jobs</option>
+        {% for j in jobs %}
+        <option value="{{ j.id }}" {% if job_filter|string == j.id|string %}selected{% endif %}>{{ j.title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-tabs">
+      {% for s in ['all', 'shortlisted', 'reviewed', 'pending', 'rejected'] %}
+      <a href="?status={{ s }}&job_id={{ job_filter }}&search={{ search }}"
+         class="filter-tab {% if status_filter == s %}active{% endif %}">
+        {{ s.title() }}
+      </a>
+      {% endfor %}
+    </div>
+
+    <button type="submit" class="btn btn-ghost"><i class="fas fa-filter"></i> Apply</button>
+  </form>
+</div>
+
+<!-- Candidates Table Card -->
+<div class="card mt-4">
+  <div class="card-header">
+    <h3><i class="fas fa-users"></i> Screened Candidates ({{ resumes|length }})</h3>
+  </div>
+
+  {% if resumes %}
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Candidate</th>
+          <th>Applied Role</th>
+          <th>ATS Score</th>
+          <th>Skills Score</th>
+          <th>Experience</th>
+          <th>Education</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in resumes %}
+        <tr data-href="{{ url_for('resumes.resume_detail', resume_id=r.id) }}">
+          <td>
+            <div class="candidate-cell">
+              <div class="candidate-avatar-sm">{{ (r.candidate_name or 'U')[0].upper() }}</div>
+              <div>
+                <strong>{{ r.candidate_name or 'Unknown' }}</strong>
+                <small class="text-muted">{{ r.candidate_email or 'No email' }}</small>
+              </div>
+            </div>
+          </td>
+          <td>
+            <a href="{{ url_for('jobs.job_detail', job_id=r.job.id) }}" class="text-primary-link" onclick="event.stopPropagation()">
+              {{ r.job.title }}
+            </a>
+          </td>
+          <td>
+            <div class="score-bar-cell">
+              <div class="score-bar-track">
+                <div class="score-bar-fill {% if r.ats_score >= 75 %}fill-green{% elif r.ats_score >= 50 %}fill-blue{% elif r.ats_score >= 25 %}fill-orange{% else %}fill-red{% endif %}"
+                     style="width: {{ r.ats_score }}%"></div>
+              </div>
+              <span class="score-text {% if r.ats_score >= 75 %}text-green{% elif r.ats_score >= 50 %}text-blue{% else %}text-orange{% endif %}">
+                {{ r.ats_score|round(1) }}%
+              </span>
+            </div>
+          </td>
+          <td>
+            <span class="badge badge-neutral">{{ r.skill_score|round(0)|int }}% match</span>
+          </td>
+          <td>
+            <span class="text-sm">{{ r.years_experience|round(1) }} yrs</span>
+          </td>
+          <td>
+            <span class="text-sm">{{ r.education_level or '—' }}</span>
+          </td>
+          <td>
+            <span class="badge {% if r.status == 'shortlisted' %}badge-success{% elif r.status == 'rejected' %}badge-danger{% elif r.status == 'reviewed' %}badge-info{% else %}badge-warning{% endif %}">
+              {{ r.status.title() }}
+            </span>
+          </td>
+          <td>
+            <div class="table-actions" onclick="event.stopPropagation()">
+              <a href="{{ url_for('resumes.resume_detail', resume_id=r.id) }}" class="btn btn-ghost btn-xs" title="View Candidate Profile">
+                <i class="fas fa-eye"></i> View
+              </a>
+              <a href="{{ url_for('analysis.compare', job_id=r.job_id) }}" class="btn btn-ghost btn-xs" title="Compare in Job">
+                <i class="fas fa-columns"></i>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fas fa-user-slash"></i>
+    <p>No candidates match the selected filters.</p>
+    <a href="{{ url_for('resumes.list_resumes') }}" class="btn btn-outline btn-sm">Clear Filters</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

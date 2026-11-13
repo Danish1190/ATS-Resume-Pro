@@ -1,0 +1,20 @@
+
+Sarah Connor
+Email: sarah.connor@example.com
+Phone: (555) 123-4567
+
+SUMMARY
+Senior Software Engineer with 6 years of experience building web applications using Python, Flask, React, PostgreSQL, Docker, and AWS.
+
+EXPERIENCE
+Senior Python Developer | Cyberdyne Systems (2018 - Present)
+- Developed REST APIs and microservices using Python and Flask.
+- Built dynamic user interfaces with React and Tailwind CSS.
+- Automated deployments using Docker, Kubernetes, and AWS EC2.
+- Designed database schemas and optimized queries in PostgreSQL.
+
+EDUCATION
+Bachelor of Science in Computer Science | Stanford University
+
+SKILLS
+Python, Flask, React, PostgreSQL, Docker, AWS, Git, REST, Linux, CI/CD
